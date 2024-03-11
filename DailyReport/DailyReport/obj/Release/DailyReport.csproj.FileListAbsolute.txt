@@ -1,0 +1,9 @@
+E:\WorkingProjects\Project\DailyReport\DailyReport\bin\Release\DailyReport.exe.config
+E:\WorkingProjects\Project\DailyReport\DailyReport\bin\Release\DailyReport.exe
+E:\WorkingProjects\Project\DailyReport\DailyReport\bin\Release\DailyReport.pdb
+E:\WorkingProjects\Project\DailyReport\DailyReport\bin\Release\DocumentFormat.OpenXml.dll
+E:\WorkingProjects\Project\DailyReport\DailyReport\bin\Release\MySql.Data.dll
+E:\WorkingProjects\Project\DailyReport\DailyReport\obj\Release\DailyReport.ProjectInstaller.resources
+E:\WorkingProjects\Project\DailyReport\DailyReport\obj\Release\DailyReport.csproj.GenerateResource.Cache
+E:\WorkingProjects\Project\DailyReport\DailyReport\obj\Release\DailyReport.exe
+E:\WorkingProjects\Project\DailyReport\DailyReport\obj\Release\DailyReport.pdb

@@ -1,0 +1,28 @@
+D:\WorkingProjects\Project\DailyReport\RailNotification\obj\Debug\DailyReport.ProjectInstaller.resources
+D:\WorkingProjects\Project\DailyReport\RailNotification\obj\Debug\DailyReport.csproj.GenerateResource.Cache
+D:\WorkingProjects\Project\DailyReport\RailNotification\bin\Debug\DailyReport.exe.config
+D:\WorkingProjects\Project\DailyReport\RailNotification\bin\Debug\DailyReport.exe
+D:\WorkingProjects\Project\DailyReport\RailNotification\bin\Debug\DailyReport.pdb
+D:\WorkingProjects\Project\DailyReport\RailNotification\obj\Debug\DailyReport.exe
+D:\WorkingProjects\Project\DailyReport\RailNotification\obj\Debug\DailyReport.pdb
+D:\WorkingProjects\Project\DailyReport\DailyReport\bin\Debug\DailyReport.exe.config
+D:\WorkingProjects\Project\DailyReport\DailyReport\obj\Debug\DailyReport.exe
+D:\WorkingProjects\Project\DailyReport\DailyReport\obj\Debug\DailyReport.pdb
+D:\WorkingProjects\Project\DailyReport\DailyReport\obj\Debug\DailyReport.ProjectInstaller.resources
+D:\WorkingProjects\Project\DailyReport\DailyReport\obj\Debug\DailyReport.csproj.GenerateResource.Cache
+D:\WorkingProjects\Project\DailyReport\DailyReport\bin\Debug\DailyReport.exe
+D:\WorkingProjects\Project\DailyReport\DailyReport\bin\Debug\DailyReport.pdb
+E:\WorkingProjects\Project\DailyReport\DailyReport\bin\Debug\DailyReport.exe.config
+E:\WorkingProjects\Project\DailyReport\DailyReport\bin\Debug\DailyReport.exe
+E:\WorkingProjects\Project\DailyReport\DailyReport\bin\Debug\DailyReport.pdb
+E:\WorkingProjects\Project\DailyReport\DailyReport\obj\Debug\DailyReport.ProjectInstaller.resources
+E:\WorkingProjects\Project\DailyReport\DailyReport\obj\Debug\DailyReport.csproj.GenerateResource.Cache
+E:\WorkingProjects\Project\DailyReport\DailyReport\obj\Debug\DailyReport.exe
+E:\WorkingProjects\Project\DailyReport\DailyReport\obj\Debug\DailyReport.pdb
+E:\WorkingProjects\Project\New folder (3)\DailyReport\DailyReport\bin\Debug\DailyReport.exe.config
+E:\WorkingProjects\Project\New folder (3)\DailyReport\DailyReport\obj\Debug\DailyReport.exe
+E:\WorkingProjects\Project\New folder (3)\DailyReport\DailyReport\obj\Debug\DailyReport.pdb
+E:\WorkingProjects\Project\New folder (3)\DailyReport\DailyReport\bin\Debug\DailyReport.exe
+E:\WorkingProjects\Project\New folder (3)\DailyReport\DailyReport\bin\Debug\DailyReport.pdb
+E:\WorkingProjects\Project\New folder (3)\DailyReport\DailyReport\obj\Debug\DailyReport.ProjectInstaller.resources
+E:\WorkingProjects\Project\New folder (3)\DailyReport\DailyReport\obj\Debug\DailyReport.csproj.GenerateResource.Cache
