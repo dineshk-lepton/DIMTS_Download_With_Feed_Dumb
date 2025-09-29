@@ -36,7 +36,13 @@ namespace DailyReport.Model
         List<BufferData> _StopTimes = new List<BufferData>();
         string insertDumpValues = string.Empty;
         string[] mailingaddresto = Convert.ToString(ConfigurationSettings.AppSettings["MailToAddress"]).Split(',');
-
+        // =============================
+        // Class-level variables (add at top of class)
+        // =============================
+        private static int _lastFeedTimestamp = 0;
+        private static int _lastEntityCount = 0;
+        private static DateTime? _freezeStartTime = null;
+        private static bool _mailSentDuringFreeze = false;
         #endregion
         public DimtsReport()
         {
@@ -74,7 +80,6 @@ namespace DailyReport.Model
             catch { }
 
         }
-
         public void WriteLog(string logMessage, string foldername)
         {
 
@@ -88,7 +93,7 @@ namespace DailyReport.Model
                     Directory.CreateDirectory(logPath);
                 }
                 //logPath = LogPath + "Logged\\" + foldername + "\\Log_" + DateTime.Now.ToString("dd_MM_yyyy") + ".txt";
-                logPath = logPath+"\\Log_" + DateTime.Now.ToString("dd_MM_yyyy") + ".txt";
+                logPath = logPath + "\\Log_" + DateTime.Now.ToString("dd_MM_yyyy") + ".txt";
                 if (!File.Exists(logPath))
                 {
                     FileStream fileStream = File.Create(logPath);
@@ -108,6 +113,7 @@ namespace DailyReport.Model
 
             }
         }
+        //New Function
         public void DIMTSDataDownload()
         {
             TimeSpan start = new TimeSpan(23, 59, 59); //10 o'clock
@@ -163,15 +169,18 @@ namespace DailyReport.Model
                                                 var realtime = entity;
                                                 if (realtime != null)
                                                 {
-                                                    _StopTimes.Add(new BufferData() { Bus_reg_no = entity.Id, 
+                                                    _StopTimes.Add(new BufferData()
+                                                    {
+                                                        Bus_reg_no = entity.Id,
                                                         route_name = entity.Vehicle.Trip.RouteId,
                                                         Latitude = entity.Vehicle.Position.Latitude,
                                                         Longitude = entity.Vehicle.Position.Longitude,
-                                                        velocity = entity.Vehicle.Position.Speed.ToString(), 
-                                                        timestamp = (int)entity.Vehicle.Timestamp, 
-                                                        api_hit_time = hittime,                                                        
+                                                        velocity = entity.Vehicle.Position.Speed.ToString(),
+                                                        timestamp = (int)entity.Vehicle.Timestamp,
+                                                        api_hit_time = hittime,
                                                         local_timestamp = (HelperClass.UnixTimeStampToLocalDateTime(entity.Vehicle.Timestamp.ToString())).ToString("s"),
-                                                        feed_header_timestamp= (int)feed.Header.Timestamp                                                   });
+                                                        feed_header_timestamp = (int)feed.Header.Timestamp
+                                                    });
                                                 }
 
                                             }
@@ -185,7 +194,166 @@ namespace DailyReport.Model
                                     foreach (var lists in _StopTimes)
                                     {
                                         insertDumpValues = insertDumpValues.Equals(string.Empty) ? "('" + lists.api_hit_time + "','" + lists.route_name + "','" + lists.Latitude + "','" + lists.Longitude + "','" + lists.Bus_reg_no + "','" + lists.velocity + "','" + lists.timestamp + "','" + lists.local_timestamp + "','" + lists.feed_header_timestamp + "')\n"
-                                                              : insertDumpValues + ",\n" + "('" + lists.api_hit_time +"','" + lists.route_name + "','" + lists.Latitude + "','" + lists.Longitude + "','" + lists.Bus_reg_no + "','" + lists.velocity + "','" + lists.timestamp + "','" + lists.local_timestamp + "','" + lists.feed_header_timestamp + "')";
+                                                              : insertDumpValues + ",\n" + "('" + lists.api_hit_time + "','" + lists.route_name + "','" + lists.Latitude + "','" + lists.Longitude + "','" + lists.Bus_reg_no + "','" + lists.velocity + "','" + lists.timestamp + "','" + lists.local_timestamp + "','" + lists.feed_header_timestamp + "')";
+                                    }
+                                    // =============================
+                                    // Freeze detection logic added here
+                                    // =============================
+                                    int currentCount = _StopTimes.Count;
+                                    int currentFeedTimestamp = (int)feed.Header.Timestamp;
+
+                                    if (currentCount == _lastEntityCount && currentFeedTimestamp == _lastFeedTimestamp)
+                                    {
+                                        if (_freezeStartTime == null)
+                                        {
+                                            _freezeStartTime = DateTime.Now;
+                                            _mailSentDuringFreeze = false;
+                                        }
+
+                                        if ((DateTime.Now - _freezeStartTime.Value).TotalMinutes >= 30)
+                                        {
+                                            if (!_mailSentDuringFreeze)
+                                            {
+                                                SendMailAsync("Feed frozen: count and timestamp same for 30+ minutes. Please check DIMTS feed.",
+                                                              mailingaddresto,
+                                                              "WARNING ON SERVER 192.168.1.131");
+                                                _mailSentDuringFreeze = true;
+                                            }
+                                            // ❌ Do not insert into DB while frozen
+                                        }
+                                        else
+                                        {
+                                            // Still within 30 minutes → allow insert
+                                            InsertRecordTable("INSERT INTO " + bkptablename +
+                                                              "(api_hit_time,route_name,Latitude,Longitude,Bus_reg_no,velocity,timestamp,local_timestamp,feed_header_timestamp) " +
+                                                              "values " + insertDumpValues);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // Data changed → reset freeze state and insert
+                                        _freezeStartTime = null;
+                                        _mailSentDuringFreeze = false;
+
+                                        InsertRecordTable("INSERT INTO " + bkptablename +
+                                                          "(api_hit_time,route_name,Latitude,Longitude,Bus_reg_no,velocity,timestamp,local_timestamp,feed_header_timestamp) " +
+                                                          "values " + insertDumpValues);
+                                    }
+
+                                    // Update last known state
+                                    _lastEntityCount = currentCount;
+                                    _lastFeedTimestamp = currentFeedTimestamp;
+
+                                }
+                                else
+                                {
+                                    Emailflag = true;
+                                    TimeSpan _thSdelayMin = dtThirMinute - DateTime.UtcNow;
+                                    if (_thSdelayMin < TimeSpan.Zero)
+                                    {
+                                        Emailflag = false;
+                                        _seconds = TimeSpan.Parse(_time).TotalSeconds;
+                                        SendMailAsync("Data is not coming from DIMTS agency side. Please check the link :- " + filepath + "", mailingaddresto, "WARNING ON SERVER 2.21");
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                SendMailAsync("Process Failure.\t" + ex + "\t", mailingaddresto, "WARNING ON SERVER 2.21");
+                            }
+                            //download api feed every 32 seconds::keep delay still next downloading time
+                            int delayThread = Convert.ToInt32(ConfigurationManager.AppSettings["RST"]) - (int)((DateTime.Now - startTime).TotalSeconds);
+                            if (delayThread > 0)
+                                Thread.Sleep(1000 * delayThread);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) { }
+
+        }
+        //OLd Function
+        public void DIMTSDataDownload_()
+        {
+            TimeSpan start = new TimeSpan(23, 59, 59); //10 o'clock
+            TimeSpan end = new TimeSpan(05, 0, 0); //12 o'clock
+            TimeSpan now = DateTime.Now.TimeOfDay;
+
+            try
+            {
+                while (true)
+                {
+                    now = DateTime.Now.TimeOfDay;
+                    if ((now < start) && (now > end))
+                    {
+                        lock (_Report)
+                        {
+
+                            string filepath = string.Empty;
+                            try
+                            {
+                                if (Emailflag == false)
+                                {
+                                    dtThirMinute = CurrentToThirtyMinute();
+                                }
+                                WriteLog("Feed  hit time " + DateTime.Now.ToString() + "", "UlrHittime");
+                                startTime = DateTime.Now;
+                                filepath = System.Configuration.ConfigurationManager.AppSettings["DIMTSURL"].ToString().Trim();
+                                string fileuploadedpath = System.Configuration.ConfigurationManager.AppSettings["FileCopypath"].ToString().Trim();
+                                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                                string fileUpload = AppDomain.CurrentDomain.BaseDirectory + "\\DIMTS\\VehiclePositions.pb";
+                                string directory = Path.GetDirectoryName(fileUpload);
+                                if (!(Directory.Exists(directory)))
+                                { Directory.CreateDirectory(directory); }
+                                using (var client = new WebClient())
+                                {
+                                    client.DownloadFile(filepath, fileUpload);
+                                }
+                                File.Copy(fileUpload, fileuploadedpath, true);
+                                WebRequest req = HttpWebRequest.Create(filepath);
+                                string hittime = DateTime.Now.ToString("s");
+                                TransitRealtime.FeedMessage feed = Serializer.Deserialize<TransitRealtime.FeedMessage>(req.GetResponse().GetResponseStream());
+                                startTime = DateTime.Now;
+                                insertDumpValues = String.Empty;
+                                if (feed.Entities.Count > 0)
+                                {
+                                    Emailflag = false;
+                                    if (feed.Entities.Count > 0)
+                                    {
+                                        _StopTimes = new List<BufferData>();
+                                        foreach (TransitRealtime.FeedEntity entity in feed.Entities)
+                                        {
+                                            try
+                                            {
+                                                var realtime = entity;
+                                                if (realtime != null)
+                                                {
+                                                    _StopTimes.Add(new BufferData()
+                                                    {
+                                                        Bus_reg_no = entity.Id,
+                                                        route_name = entity.Vehicle.Trip.RouteId,
+                                                        Latitude = entity.Vehicle.Position.Latitude,
+                                                        Longitude = entity.Vehicle.Position.Longitude,
+                                                        velocity = entity.Vehicle.Position.Speed.ToString(),
+                                                        timestamp = (int)entity.Vehicle.Timestamp,
+                                                        api_hit_time = hittime,
+                                                        local_timestamp = (HelperClass.UnixTimeStampToLocalDateTime(entity.Vehicle.Timestamp.ToString())).ToString("s"),
+                                                        feed_header_timestamp = (int)feed.Header.Timestamp
+                                                    });
+                                                }
+
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                //HelperClass.HelperClass.ExceptionLog(ex.Source, ex.Message, ex.StackTrace, "GenerateDataFeedUrl");
+                                            }
+                                        }
+                                    }
+                                    CheckCurrentDataTable("agencydata");
+                                    foreach (var lists in _StopTimes)
+                                    {
+                                        insertDumpValues = insertDumpValues.Equals(string.Empty) ? "('" + lists.api_hit_time + "','" + lists.route_name + "','" + lists.Latitude + "','" + lists.Longitude + "','" + lists.Bus_reg_no + "','" + lists.velocity + "','" + lists.timestamp + "','" + lists.local_timestamp + "','" + lists.feed_header_timestamp + "')\n"
+                                                              : insertDumpValues + ",\n" + "('" + lists.api_hit_time + "','" + lists.route_name + "','" + lists.Latitude + "','" + lists.Longitude + "','" + lists.Bus_reg_no + "','" + lists.velocity + "','" + lists.timestamp + "','" + lists.local_timestamp + "','" + lists.feed_header_timestamp + "')";
                                     }
                                     InsertRecordTable("INSERT INTO " + bkptablename + "(api_hit_time,route_name,Latitude,Longitude,Bus_reg_no,velocity,timestamp,local_timestamp,feed_header_timestamp) " +
                                                                                    "values " + insertDumpValues);
@@ -204,7 +372,7 @@ namespace DailyReport.Model
                             }
                             catch (Exception ex)
                             {
-                                SendMailAsync("Process Failure.\t"+ ex+"\t", mailingaddresto, "WARNING ON SERVER 2.21");
+                                SendMailAsync("Process Failure.\t" + ex + "\t", mailingaddresto, "WARNING ON SERVER 2.21");
                             }
                             //download api feed every 32 seconds::keep delay still next downloading time
                             int delayThread = Convert.ToInt32(ConfigurationManager.AppSettings["RST"]) - (int)((DateTime.Now - startTime).TotalSeconds);
@@ -217,7 +385,6 @@ namespace DailyReport.Model
             catch (Exception ex) { }
 
         }
-
         public void SendMailAsync(string body, string[] emailIDs, string mailType = "")
         {
             try
@@ -313,14 +480,12 @@ namespace DailyReport.Model
 
             }
         }
-
         DateTime CurrentToThirtyMinute()
         {
             DateTime now = DateTime.UtcNow,
             result = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second);
             return result.AddMinutes(15);
         }
-
         public void InsertRecordTable(string Insrtqrt)
         {
             try
@@ -346,7 +511,6 @@ namespace DailyReport.Model
                 // HelperClass.HelperClass.ExceptionLog(ex.Source, ex.Message, ex.StackTrace, "InsertRecordTable");
             }
         }
-
         private void CheckCurrentDataTable(string TableName)
         {
             try
@@ -397,13 +561,11 @@ namespace DailyReport.Model
             catch (Exception ex) { }
         }
     }
-
     public class FeedUpdationTime
     {
         public DateTime datetime { get; set; }
         public bool FlagValue { get; set; }
     }
-
     public class BufferData
     {
         public string Bus_reg_no { get; set; }
